@@ -19,6 +19,7 @@ import com.spzx.product.service.IProductService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
@@ -231,6 +232,45 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
 
     @Override
     public ProductSku getProductSku(Long skuId) {
+        try {
+            String productSkuKey = "Product:productSku:" + skuId;
+            ProductSku productSku =(ProductSku) redisTemplate.opsForValue().get(productSkuKey);
+            if (productSku != null) {
+                return productSku;
+            }
+            String lockValue = UUID.randomUUID().toString().replaceAll("-", "");
+            String lockSkuKey = "Product:productSku:lock" + skuId;
+            Boolean flat = redisTemplate.opsForValue().setIfAbsent(lockSkuKey, lockValue);
+            if (flat) {
+                try {
+                    ProductSku productSkuByDB = getProductSkuByDB(skuId);
+                    redisTemplate.opsForValue().set(productSkuKey, productSkuByDB);
+                    return productSkuByDB;
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                } finally {
+                    String luaScript = """
+                            if redis.call('get',KEYS[1]) == ARGV[1]) then return redis.call('del',KEYS[1]) else return 0 end
+                            """;
+                    RedisScript<Boolean> booleanRedisScript = RedisScript.of(luaScript, Boolean.class);
+                    List<String> keys = Arrays.asList(lockSkuKey);
+                    redisTemplate.execute(booleanRedisScript, keys, lockValue);
+                }
+            }else {
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+                return  getProductSku(skuId);
+            }
+        } catch (Exception e) {
+            return getProductSkuByDB(skuId);
+        }
+
+    }
+
+    public ProductSku getProductSkuByDB(Long skuId) {
         return productSkuMapper.selectById(skuId);
     }
 
