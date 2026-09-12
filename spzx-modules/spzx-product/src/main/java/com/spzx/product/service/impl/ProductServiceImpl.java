@@ -137,11 +137,19 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
 
     @Override
     public int updateProduct(Product product) {
+
+        List<ProductSku> productSkuList = product.getProductSkuList();
+        List<Long> productskuIds = productSkuList.stream().map(productSku -> productSku.getId()).collect(Collectors.toList());
+
+        productskuIds.forEach(skuId -> {
+            redisTemplate.delete("Product:productSku:" + skuId);
+        });
+
         //1.更新Product
         productMapper.updateById(product);
 
         //2.更新SKU   List<ProductSku>
-        List<ProductSku> productSkuList = product.getProductSkuList();
+        //List<ProductSku> productSkuList = product.getProductSkuList();
         if (CollectionUtils.isEmpty(productSkuList)) {
             throw new ServiceException("SKU数据为空");
         }
@@ -160,6 +168,16 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
                 .selectOne(new LambdaQueryWrapper<ProductDetails>().eq(ProductDetails::getProductId, product.getId()));
         productDetails.setImageUrls(String.join(",", product.getDetailsImageUrlList()));
         productDetailsMapper.updateById(productDetails);
+
+        try {
+            Thread.sleep(100);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
+        productskuIds.forEach(skuId -> {
+            redisTemplate.delete("Product:productSku:" + skuId);
+        });
 
         return 1;
     }
