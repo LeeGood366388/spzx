@@ -9,6 +9,7 @@ import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
 
 import java.util.List;
 
@@ -16,5 +17,11 @@ import java.util.List;
         value = ServiceNameConstants.CART_SERVICE,
         fallbackFactory = RemoteCartFallbackFactory.class)
 public interface RemoteCartService {
+
+    @GetMapping("getCheckedCartInfo")
+     R<List<CartInfo>> getCheckedCartInfo(@RequestHeader(SecurityConstants.FROM_SOURCE) String source);
+
+    @GetMapping("/clearCheckedCartInfo")
+     R<Void> clearCheckedCartInfo(@RequestHeader(SecurityConstants.FROM_SOURCE) String source);
 
 }

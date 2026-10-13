@@ -31,6 +31,28 @@ public class OrderInfoController extends BaseController {
     @Autowired
     private IOrderInfoService orderInfoService;
 
+
+    @Operation(summary = "去结算")
+    @GetMapping("/trade")
+    public AjaxResult trade() {
+        TradeVo tradeVo = orderInfoService.trade();
+        return success(tradeVo);
+    }
+
+    @Operation(summary = "立即购买")
+    @GetMapping("/buy/{skuId}")
+    public AjaxResult buy(@PathVariable("skuId") Long skuId) {
+        TradeVo tradeVo = orderInfoService.buy(skuId);
+        return success(tradeVo);
+    }
+
+    @Operation(summary = "提交订单")
+    @PostMapping("/submitOrder")
+    public AjaxResult submitOrder(@RequestBody OrderForm orderForm) {
+        Long orderId = orderInfoService.submitOrder(orderForm);
+        return success(orderId);
+    }
+
     /**
      * 查询订单列表
      */
@@ -65,6 +87,8 @@ public class OrderInfoController extends BaseController {
     public AjaxResult getInfo(@PathVariable("id") Long id) {
         return success(orderInfoService.selectOrderInfoById(id));
     }
+
+
 
 
 

@@ -14,6 +14,7 @@ import com.spzx.product.api.domain.vo.SkuPrice;
 import com.spzx.product.api.domain.vo.SkuStockVo;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
@@ -26,8 +27,16 @@ public class ItemServiceImpl implements IItemService {
     @Autowired
     private RemoteProductService remoteProductService;
 
+    @Autowired
+    private RedisTemplate redisTemplate;
+
     @Override
     public ItemVo item(Long skuId) throws Exception {
+
+        Boolean flag = redisTemplate.opsForValue().getBit("product:Sku:Date", skuId);
+        if (!flag){
+            throw new ServiceException("你访问的SkuId:"+skuId+"商品不存在");
+        }
 
         ItemVo itemVo = new ItemVo();
 

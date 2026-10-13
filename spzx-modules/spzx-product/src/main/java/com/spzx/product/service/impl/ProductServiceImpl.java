@@ -1,6 +1,7 @@
 package com.spzx.product.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.spzx.common.core.exception.ServiceException;
 import com.spzx.common.core.utils.bean.BeanUtils;
@@ -170,7 +171,7 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
         productDetailsMapper.updateById(productDetails);
 
         try {
-            Thread.sleep(100);
+            Thread.sleep(300);
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
@@ -222,12 +223,22 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
     public void updateStatus(Long id, Integer status) {
         Product product = new Product();
         product.setId(id);
+        List<ProductSku> productSkus = productSkuMapper.selectList(new LambdaQueryWrapper<ProductSku>().eq(ProductSku::getProductId, id));
+        List<Long> skuIds = productSkus.stream().map(ProductSku::getId).collect(Collectors.toList());
         if (status == 1) {
             product.setStatus(1);
+            skuIds.forEach(skuId -> {
+                redisTemplate.opsForValue().setBit("Proudct:Sku:Date",skuId,true);
+            });
         } else {
             product.setStatus(-1);
+            skuIds.forEach(skuId -> {
+                redisTemplate.opsForValue().setBit("Proudct:Sku:Date",skuId,false);
+            });
+
         }
         productMapper.updateById(product);
+        productSkuMapper.update(null, new LambdaUpdateWrapper<ProductSku>().eq(ProductSku::getProductId, id).set(ProductSku::getStatus, status));
     }
 
 
